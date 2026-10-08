@@ -1,0 +1,238 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 1b88e703de06497fa78d6577cf5a62ea
+      name: 'Templates/Server hardware'
+  templates:
+    - uuid: 9efb28f6318a4593b0c46f27d318bc5e
+      template: 'MegaRAC BMC by SNMP'
+      name: 'MegaRAC BMC by SNMP'
+      description: |
+        MegaRAC BMC hardware monitoring via SNMP.
+        Built from enterprise OID 1.3.6.1.4.1.15370 walk.
+        SNMPv3 credentials are configured on the host SNMP interface, not in this template.
+      groups:
+        - name: 'Templates/Server hardware'
+      items:
+        - uuid: 77f16a9d7ee54f05946c7af83c5c37a1
+          name: 'System power state'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.4.1.15370.553.1.0'
+          key: megarac.power.state
+          delay: 1m
+          value_type: TEXT
+          tags:
+            - tag: component
+              value: power
+        - uuid: f707abbd0b11469da7f8e2ca83585eb6
+          name: 'Power reading 1'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.4.1.15370.553.2.0'
+          key: megarac.power.reading1
+          delay: 1m
+          units: W
+          tags:
+            - tag: component
+              value: power
+        - uuid: 32ac3e8c30b84a7aa4ec9022b4990f1a
+          name: 'Power reading 2'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.4.1.15370.553.3.0'
+          key: megarac.power.reading2
+          delay: 1m
+          units: W
+          tags:
+            - tag: component
+              value: power
+        - uuid: 08a203bc708d4bb8a4f777d7719d2e75
+          name: 'Power reading 3'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.4.1.15370.553.5.0'
+          key: megarac.power.reading3
+          delay: 1m
+          units: W
+          tags:
+            - tag: component
+              value: power
+        - uuid: e7d5f297cfb64c0498c8a99019b117a0
+          name: 'SEL status'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.4.1.15370.555.2.1.2.1'
+          key: megarac.sel.status
+          delay: 5m
+          value_type: TEXT
+          tags:
+            - tag: component
+              value: sel
+        - uuid: d5b3f8fceaba485095dbe3fba18f5486
+          name: 'SEL last event'
+          type: SNMP_AGENT
+          snmp_oid: '1.3.6.1.4.1.15370.555.2.1.7.1'
+          key: megarac.sel.last_event
+          delay: 5m
+          value_type: TEXT
+          trends: '0'
+          tags:
+            - tag: component
+              value: sel
+      discovery_rules:
+        - uuid: 719d9c34f91c4ab79edbe7f1f8c204bc
+          name: 'Temperature sensor discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#SENSORNAME},1.3.6.1.4.1.15370.554.1.1.2,{#UWARN},1.3.6.1.4.1.15370.554.1.1.5,{#UCRIT},1.3.6.1.4.1.15370.554.1.1.6]'
+          key: megarac.sensor.temp.discovery
+          delay: 1h
+          filter:
+            evaltype: OR
+            conditions:
+              - macro: '{#SENSORNAME}'
+                value: '(_TEMP$|_DTS$|_PROC$|RISER_LAN_)'
+                formulaid: A
+          item_prototypes:
+            - uuid: f2200267d93d45bc9e1a8a33979e8fd7
+              name: 'Temperature {#SENSORNAME}'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.15370.554.1.1.4.{#SNMPINDEX}'
+              key: 'megarac.sensor.temp[{#SNMPINDEX}]'
+              delay: 1m
+              value_type: FLOAT
+              units: °C
+              tags:
+                - tag: component
+                  value: temperature
+          trigger_prototypes:
+            - uuid: a4031137a7484a8c994ca93c76826377
+              expression: 'last(/MegaRAC BMC by SNMP/megarac.sensor.temp[{#SNMPINDEX}])>{#UCRIT} and {#UCRIT}>0'
+              name: 'Temperature {#SENSORNAME} is above critical threshold ({#UCRIT} °C)'
+              priority: HIGH
+              tags:
+                - tag: scope
+                  value: availability
+            - uuid: 0e60c06c8a7f4f51bb66d9e67f9b53e2
+              expression: 'last(/MegaRAC BMC by SNMP/megarac.sensor.temp[{#SNMPINDEX}])>{#UWARN} and {#UWARN}>0'
+              name: 'Temperature {#SENSORNAME} is above warning threshold ({#UWARN} °C)'
+              priority: WARNING
+              dependencies:
+                - name: 'Temperature {#SENSORNAME} is above critical threshold ({#UCRIT} °C)'
+                  expression: 'last(/MegaRAC BMC by SNMP/megarac.sensor.temp[{#SNMPINDEX}])>{#UCRIT} and {#UCRIT}>0'
+        - uuid: 0636883883904998ac92746a3f245a92
+          name: 'Fan sensor discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#SENSORNAME},1.3.6.1.4.1.15370.554.1.1.2,{#LWARN},1.3.6.1.4.1.15370.554.1.1.7,{#LCRIT},1.3.6.1.4.1.15370.554.1.1.8]'
+          key: megarac.sensor.fan.discovery
+          delay: 1h
+          filter:
+            conditions:
+              - macro: '{#SENSORNAME}'
+                value: 'FAN'
+                formulaid: A
+          item_prototypes:
+            - uuid: a847f9a5c1ec4c7c9a2a23dcce4998b4
+              name: 'Fan {#SENSORNAME}'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.15370.554.1.1.4.{#SNMPINDEX}'
+              key: 'megarac.sensor.fan[{#SNMPINDEX}]'
+              delay: 1m
+              value_type: FLOAT
+              units: rpm
+              tags:
+                - tag: component
+                  value: fan
+          trigger_prototypes:
+            - uuid: bcf99fc7f5424f60ad129b86a58428c1
+              expression: 'last(/MegaRAC BMC by SNMP/megarac.sensor.fan[{#SNMPINDEX}])<{#LCRIT} and {#LCRIT}>0'
+              name: 'Fan {#SENSORNAME} speed is below critical threshold ({#LCRIT} rpm)'
+              priority: HIGH
+            - uuid: e28ce696043f4f5d8fc01bf7e76f55ef
+              expression: 'last(/MegaRAC BMC by SNMP/megarac.sensor.fan[{#SNMPINDEX}])<{#LWARN} and {#LWARN}>0'
+              name: 'Fan {#SENSORNAME} speed is below warning threshold ({#LWARN} rpm)'
+              priority: WARNING
+        - uuid: d8304a1426f4450ebd86b18c21f49573
+          name: 'Voltage sensor discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#SENSORNAME},1.3.6.1.4.1.15370.554.1.1.2,{#UWARN},1.3.6.1.4.1.15370.554.1.1.5,{#UCRIT},1.3.6.1.4.1.15370.554.1.1.6,{#LWARN},1.3.6.1.4.1.15370.554.1.1.7,{#LCRIT},1.3.6.1.4.1.15370.554.1.1.8]'
+          key: megarac.sensor.voltage.discovery
+          delay: 1h
+          filter:
+            evaltype: OR
+            conditions:
+              - macro: '{#SENSORNAME}'
+                value: '(^P_|VOUT$)'
+                formulaid: A
+          item_prototypes:
+            - uuid: 405a1a9028df4e56a0b03bbf82652dd7
+              name: 'Voltage {#SENSORNAME}'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.15370.554.1.1.4.{#SNMPINDEX}'
+              key: 'megarac.sensor.voltage[{#SNMPINDEX}]'
+              delay: 1m
+              value_type: FLOAT
+              units: V
+              tags:
+                - tag: component
+                  value: voltage
+          trigger_prototypes:
+            - uuid: cdb9500cbcac44aebc9593bb69845221
+              expression: 'last(/MegaRAC BMC by SNMP/megarac.sensor.voltage[{#SNMPINDEX}])>{#UCRIT} and {#UCRIT}>0'
+              name: 'Voltage {#SENSORNAME} is above critical threshold ({#UCRIT} V)'
+              priority: HIGH
+            - uuid: c7e7db2357dc4447bb8a7c5bc8db2f09
+              expression: 'last(/MegaRAC BMC by SNMP/megarac.sensor.voltage[{#SNMPINDEX}])<{#LCRIT} and {#LCRIT}>0'
+              name: 'Voltage {#SENSORNAME} is below critical threshold ({#LCRIT} V)'
+              priority: HIGH
+        - uuid: d13c960078754799a884ccba6c61cde7
+          name: 'Power supply discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#PSUMODEL},1.3.6.1.4.1.15370.552.6.1.2,{#PSUSERIAL},1.3.6.1.4.1.15370.552.6.1.4,{#PSUVENDOR},1.3.6.1.4.1.15370.552.6.1.5]'
+          key: megarac.psu.discovery
+          delay: 1h
+          item_prototypes:
+            - uuid: 35f317d153044845b22a0f85d527b930
+              name: 'PSU {#SNMPINDEX}: Administrative state'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.15370.552.6.1.7.{#SNMPINDEX}'
+              key: 'megarac.psu.admin[{#SNMPINDEX}]'
+              delay: 2m
+              value_type: TEXT
+              tags:
+                - tag: component
+                  value: psu
+            - uuid: 44af16dd96a84ec58e2905cc19dc82d0
+              name: 'PSU {#SNMPINDEX}: Health'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.15370.552.6.1.8.{#SNMPINDEX}'
+              key: 'megarac.psu.health[{#SNMPINDEX}]'
+              delay: 1m
+              value_type: TEXT
+              tags:
+                - tag: component
+                  value: psu
+            - uuid: 9178d979247e4515bf55eb06d216b258
+              name: 'PSU {#SNMPINDEX}: Redundancy mode'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.15370.552.6.1.9.{#SNMPINDEX}'
+              key: 'megarac.psu.redundancy[{#SNMPINDEX}]'
+              delay: 5m
+              value_type: TEXT
+              tags:
+                - tag: component
+                  value: psu
+            - uuid: 08ea3c035b84424da03a94f839e11df3
+              name: 'PSU {#SNMPINDEX}: Operational status'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.15370.552.6.1.10.{#SNMPINDEX}'
+              key: 'megarac.psu.oper[{#SNMPINDEX}]'
+              delay: 1m
+              value_type: TEXT
+              tags:
+                - tag: component
+                  value: psu
+          trigger_prototypes:
+            - uuid: d50ddfb012e14b2eac454dce59638d09
+              expression: 'last(/MegaRAC BMC by SNMP/megarac.psu.health[{#SNMPINDEX}])<>"OK"'
+              name: 'PSU {#SNMPINDEX} ({#PSUMODEL}) health is not OK'
+              priority: HIGH
+            - uuid: 65e25c38d60548e18f67eb7d570bce2c
+              expression: 'last(/MegaRAC BMC by SNMP/megarac.psu.oper[{#SNMPINDEX}])<>"OK"'
+              name: 'PSU {#SNMPINDEX} ({#PSUMODEL}) operational status is not OK'
+              priority: HIGH
